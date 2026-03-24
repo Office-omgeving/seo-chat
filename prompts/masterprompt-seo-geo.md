@@ -10,7 +10,13 @@ Voeg boven of voor deze masterprompt altijd minimaal deze klantvariabelen toe:
 - hoofddiensten
 - doelregio's
 - 2 tot 3 relevante concurrenten
+- brandkleur primair
+- brandkleur accent
 - extra context of aandachtspunten van de accountmanager
+
+Als beschikbaar, voeg ook toe:
+- Google Search Console property
+- of Search Console-toegang beschikbaar is
 
 ## Masterprompt
 BELANGRIJK
@@ -21,6 +27,14 @@ De analyse moet:
 - diepgaand zijn
 - concrete voorbeelden tonen
 - een actieplan bevatten
+- GEO altijd een eigen, expliciete sectie geven in de klantanalyse en niet alleen verspreid vermelden in andere SEO-hoofdstukken
+- altijd een expliciete concurrentiesectie geven in de bronanalyse en klantanalyse
+- altijd een expliciete sectie `Zoekwoordpotentie en huidige score` geven in de bronanalyse en klantanalyse
+- altijd een expliciete sectie `Blogstrategie` of `Blog contentplan` geven in de bronanalyse en klantanalyse
+- voor keywordvolumes en keywordideeën bij voorkeur gedeelde Google Ads Keyword Planner-data gebruiken
+- Search Console-data alleen als extra laag gebruiken zodra propertytoegang beschikbaar is
+- bij ontbrekende tooldata nooit de sectie weglaten, maar een transparante fallback gebruiken
+- brandkleuren gebruiken in de klantanalyse wanneer ze zijn ingevuld
 
 ### 1. Executive Summary
 Leg uit:
@@ -146,11 +160,37 @@ Maak tabel:
 
 Gebruik belangrijkste zoekwoorden rond diensten.
 
+Deze sectie is verplicht in elke nieuwe analyse.
+
+Als Search Console beschikbaar is:
+- gebruik echte querydata voor clicks, impressies, CTR en gemiddelde positie
+- benoem duidelijk welke zoekwoorden al tractie hebben maar nog buiten de top 10 of top 3 zitten
+- maak onderscheid tussen echte Search Console-data en externe volumeschattingen
+
+Als Search Console niet beschikbaar is:
+- gebruik keywordvolumes uit Google Ads Keyword Planner of een vergelijkbare betrouwbare databron
+- bepaal huidige ranking of zichtbaarheid via live waargenomen SERP-checks
+- benoem transparant wanneer volumes exact zijn en wanneer ze bandbreedtes zijn
+- label huidige posities als `waargenomen live check` wanneer ze niet uit een vaste rankingtool komen
+
+Maak daarnaast altijd een tweede tabel met deze structuur:
+
+| keyword | zoekvolume per maand | huidige positie / zichtbaarheid | wat ontbreekt | aanbevolen doelpagina |
+| --- | --- | --- | --- | --- |
+
 ### 8. Keyword gap analyse
 Zoekwoorden waar concurrenten op ranken.
 
 | keyword | volume |
 | --- | --- |
+
+Als Search Console beschikbaar is:
+- voeg ook een blok toe met `queries waar de klant al impressies voor krijgt maar nog onderpresteert`
+- gebruik die data om sneller quick wins te prioriteren dan alleen op externe keywordtools
+
+Als Search Console niet beschikbaar is:
+- gebruik concurrenten, site-inhoud, diensten en regio's om de relevante keywordset af te leiden
+- vul volumes aan met gedeelde keywordtooldata
 
 ### 9. Concurrentie analyse
 Zoek 2 sterke concurrenten in dezelfde regio.
@@ -165,6 +205,8 @@ Maak tabel:
 | backlinks |  |  |  |
 
 Leg uit waarom concurrenten beter ranken.
+
+Deze sectie is verplicht in elke nieuwe analyse.
 
 ### 10. Google Business profiel analyse
 Analyseer:
@@ -241,14 +283,43 @@ Leg uit:
 
 Geef voorbeeld.
 
-### 15. Blog contentplan
+### 15. Blogstrategie en contentplan
 Maak:
 
 - 2 blogs per maand
 - 6 maanden
 
-| maand | artikel |
-| --- | --- |
+Geef altijd deze vaste onderdelen in deze volgorde:
+
+1. Waarom de bloglaag nodig is voor SEO en GEO
+2. Prioritaire contentpijlers
+3. Een blogkalender van 12 artikels
+4. Minstens 2 kort uitgewerkte voorbeeldblogs
+5. Een vaste template voor de overige artikels
+
+Gebruik voor de kalender minimaal deze tabel:
+
+| maand | artikel | zoekintentie | primaire linkdoelen |
+| --- | --- | --- | --- |
+
+Werk daarna minstens 2 voorbeeldblogs uit met deze vaste opbouw:
+
+- Titel
+- Intro
+- 3 tot 5 duidelijke secties in mensentaal
+- korte answer-ready samenvatting van 40 tot 80 woorden
+- 2 interne links naar commerciële pagina's
+- 1 CTA naar offerte, inspectie of advies
+
+Gebruik voor alle overige blogartikels deze vaste template:
+
+- Intro met probleem en context
+- Uitleg in mensentaal
+- 3 tot 5 duidelijke secties
+- minstens 1 checklist, vergelijkingstabel of FAQ-blok
+- answer-ready samenvatting van 40 tot 80 woorden
+- 2 interne links naar commerciële pagina's
+- 1 CTA naar offerte, inspectie of advies
 
 ### 16. GEO Analyse (AI zoekmachines)
 Analyseer hoe goed de website scoort voor AI zoekmachines zoals:
@@ -256,6 +327,8 @@ Analyseer hoe goed de website scoort voor AI zoekmachines zoals:
 - ChatGPT
 - Perplexity
 - Gemini
+
+Deze sectie is verplicht in elke nieuwe analyse en mag niet verdwijnen uit de klantanalyse.
 
 Maak tabel:
 

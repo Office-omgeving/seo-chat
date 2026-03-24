@@ -1,0 +1,11 @@
+{
+  "name": "seo-chat",
+  "private": true,
+  "version": "1.0.0",
+  "description": "SEO/GEO audit webapp wrapper for the Python FastAPI backend.",
+  "scripts": {
+    "dev": "python3 scripts/run_webapp_dev.py",
+    "start": "python3 scripts/run_webapp_dev.py --host 0.0.0.0 --port 8000"
+  }
+}
+

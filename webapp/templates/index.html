@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SEO/GEO Audit</title>
+    <style>
+      @font-face {
+        font-family: "Poppins";
+        src: url("/assets/fonts/Poppins-Regular.ttf") format("truetype");
+        font-weight: 400;
+      }
+
+      @font-face {
+        font-family: "Poppins";
+        src: url("/assets/fonts/Poppins-SemiBold.ttf") format("truetype");
+        font-weight: 600;
+      }
+
+      :root {
+        --bg: #faf8f5;
+        --surface: #ffffff;
+        --surface-alt: #f3eee7;
+        --line: #ddd2c5;
+        --text: #2f241d;
+        --muted: #6e5d52;
+        --primary: #b45309;
+        --primary-strong: #92400e;
+        --accent: #0f766e;
+        --danger: #b91c1c;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Poppins", sans-serif;
+        color: var(--text);
+        background: var(--bg);
+      }
+
+      .shell {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 320px 1fr;
+      }
+
+      .sidebar {
+        background: #f5efe7;
+        border-right: 1px solid var(--line);
+        padding: 24px;
+      }
+
+      .sidebar h1 {
+        margin: 0 0 10px;
+        font-size: 26px;
+        line-height: 1.15;
+      }
+
+      .sidebar p {
+        margin: 0 0 18px;
+        color: var(--muted);
+        line-height: 1.55;
+        font-size: 14px;
+      }
+
+      .sidebar dl {
+        margin: 22px 0 0;
+      }
+
+      .sidebar dt {
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+
+      .sidebar dd {
+        margin: 0 0 16px;
+        font-size: 14px;
+      }
+
+      .main {
+        padding: 28px;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(360px, 620px) minmax(320px, 1fr);
+        gap: 24px;
+        align-items: start;
+      }
+
+      .panel {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+      }
+
+      .panel-header {
+        padding: 18px 20px 14px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .panel-header h2 {
+        margin: 0;
+        font-size: 18px;
+      }
+
+      .panel-body {
+        padding: 20px;
+      }
+
+      form {
+        display: grid;
+        gap: 16px;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      label {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        padding: 11px 12px;
+        border: 1px solid #cdbdad;
+        border-radius: 8px;
+        background: #fffdf9;
+        color: var(--text);
+        font: inherit;
+      }
+
+      input:focus,
+      textarea:focus {
+        outline: 2px solid rgba(180, 83, 9, 0.16);
+        border-color: var(--primary);
+      }
+
+      textarea {
+        min-height: 92px;
+        resize: vertical;
+      }
+
+      .checkbox {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-top: 4px;
+      }
+
+      .checkbox input {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+      }
+
+      button {
+        border: 0;
+        border-radius: 8px;
+        padding: 11px 16px;
+        background: var(--primary);
+        color: #fff;
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: var(--primary-strong);
+      }
+
+      button.secondary {
+        background: transparent;
+        color: var(--text);
+        border: 1px solid var(--line);
+      }
+
+      .actions {
+        display: flex;
+        gap: 12px;
+      }
+
+      .status-card {
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .status-row strong {
+        font-size: 16px;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid #d5c5b8;
+        border-radius: 8px;
+        padding: 4px 8px;
+        font-size: 12px;
+        color: var(--muted);
+        background: var(--surface-alt);
+      }
+
+      .meta-list,
+      .progress-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .meta-list li,
+      .progress-list li {
+        padding: 10px 0;
+        border-bottom: 1px solid #efe7dd;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .meta-list li:last-child,
+      .progress-list li:last-child {
+        border-bottom: 0;
+      }
+
+      .markdown {
+        white-space: pre-wrap;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #3c2e25;
+        background: #fffdf9;
+        border: 1px solid #e9dfd3;
+        border-radius: 8px;
+        padding: 14px;
+        max-height: 420px;
+        overflow: auto;
+      }
+
+      .hint,
+      .error {
+        margin: 0;
+        font-size: 13px;
+      }
+
+      .hint {
+        color: var(--muted);
+      }
+
+      .error {
+        color: var(--danger);
+      }
+
+      @media (max-width: 1024px) {
+        .shell {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          border-right: 0;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .split {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <h1>SEO/GEO Audit</h1>
+        <p>Vul de intake in en laat de backend een volledige audit opbouwen met repo-regels, skillbundles en vaste Responses API-calls naar <strong>{{ model_name }}</strong>.</p>
+        <dl>
+          <dt>Model</dt>
+          <dd>{{ model_name }}</dd>
+          <dt>Broncontext</dt>
+          <dd>AGENTS.md + masterprompt + selectieve skills</dd>
+          <dt>Storage</dt>
+          <dd>{{ storage_status.backend }}</dd>
+          <dt>Supabase</dt>
+          <dd>{% if storage_status.supabase_enabled %}verbonden{% else %}niet geconfigureerd{% endif %}</dd>
+          <dt>Output</dt>
+          <dd>Markdown in <code>seo-geo-delivery/</code></dd>
+        </dl>
+      </aside>
+
+      <main class="main">
+        <div class="layout">
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Nieuwe audit</h2>
+            </div>
+            <div class="panel-body">
+              <form id="audit-form">
+                <div class="split">
+                  <div class="field">
+                    <label for="customer_name">Klantnaam</label>
+                    <input id="customer_name" name="customer_name" required />
+                  </div>
+                  <div class="field">
+                    <label for="audit_date">Auditdatum</label>
+                    <input id="audit_date" name="audit_date" type="date" required />
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="website_url">Website URL</label>
+                  <input id="website_url" name="website_url" type="url" required />
+                </div>
+
+                <div class="field">
+                  <label for="main_services">Hoofddiensten</label>
+                  <textarea id="main_services" name="main_services" placeholder="Eén per lijn" required></textarea>
+                </div>
+
+                <div class="split">
+                  <div class="field">
+                    <label for="target_regions">Doelregio's</label>
+                    <textarea id="target_regions" name="target_regions" placeholder="Eén per lijn" required></textarea>
+                  </div>
+                  <div class="field">
+                    <label for="competitors">Concurrenten</label>
+                    <textarea id="competitors" name="competitors" placeholder="Minstens twee" required></textarea>
+                  </div>
+                </div>
+
+                <div class="split">
+                  <div class="field">
+                    <label for="brand_primary_color">Brandkleur primair</label>
+                    <input id="brand_primary_color" name="brand_primary_color" placeholder="#17162C" required />
+                  </div>
+                  <div class="field">
+                    <label for="brand_accent_color">Brandkleur accent</label>
+                    <input id="brand_accent_color" name="brand_accent_color" placeholder="#6B7388" required />
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="search_console_property">Search Console property</label>
+                  <input id="search_console_property" name="search_console_property" placeholder="Optioneel" />
+                </div>
+
+                <div class="field">
+                  <label for="account_manager_notes">Accountmanager-notities</label>
+                  <textarea id="account_manager_notes" name="account_manager_notes" placeholder="Commerciële context, aandachtspunten, aannames"></textarea>
+                </div>
+
+                <label class="checkbox" for="publish_to_google_docs">
+                  <input id="publish_to_google_docs" name="publish_to_google_docs" type="checkbox" />
+                  <span>Na afronden meteen naar Google Docs publiceren</span>
+                </label>
+
+                <div class="actions">
+                  <button type="submit">Audit starten</button>
+                  <button class="secondary" type="button" id="export-button" disabled>Naar Google Docs</button>
+                </div>
+                <p class="hint" id="form-hint">De audit gebruikt altijd `gpt-5.4` en bewaart de bronversie als Markdown in deze repo.</p>
+                <p class="error" id="form-error"></p>
+              </form>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <h2>Auditstatus</h2>
+            </div>
+            <div class="status-card">
+              <div class="status-row">
+                <strong id="status-title">Nog geen audit gestart</strong>
+                <span class="badge" id="status-badge">idle</span>
+              </div>
+            </div>
+            <div class="panel-body">
+              <ul class="meta-list" id="meta-list">
+                <li>Audit-ID verschijnt hier zodra een run gestart is.</li>
+              </ul>
+              <div class="panel" style="margin-top: 18px;">
+                <div class="panel-header">
+                  <h2 style="font-size: 15px;">Voortgang</h2>
+                </div>
+                <div class="panel-body">
+                  <ul class="progress-list" id="progress-list">
+                    <li>Wacht op intake.</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="panel" style="margin-top: 18px;">
+                <div class="panel-header">
+                  <h2 style="font-size: 15px;">Markdown-preview</h2>
+                </div>
+                <div class="panel-body">
+                  <div class="markdown" id="markdown-preview">Nog geen auditoutput.</div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      const form = document.getElementById("audit-form");
+      const exportButton = document.getElementById("export-button");
+      const statusTitle = document.getElementById("status-title");
+      const statusBadge = document.getElementById("status-badge");
+      const metaList = document.getElementById("meta-list");
+      const progressList = document.getElementById("progress-list");
+      const markdownPreview = document.getElementById("markdown-preview");
+      const formError = document.getElementById("form-error");
+      const auditDate = document.getElementById("audit_date");
+      auditDate.value = new Date().toISOString().slice(0, 10);
+
+      let currentAuditId = "";
+      let pollHandle = null;
+
+      function listFromTextarea(id) {
+        return document
+          .getElementById(id)
+          .value
+          .split(/\n|,/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+
+      function updateMeta(record) {
+        const items = [
+          `Audit-ID: ${record.audit_id}`,
+          `Status: ${record.status}`,
+          `Bronbestand: ${record.markdown_path || "nog niet beschikbaar"}`,
+          `Skills: ${(record.selected_skills || []).map((skill) => skill.slug).join(", ") || "nog niet geselecteerd"}`,
+          `Frameworks: ${(record.selected_frameworks || []).map((framework) => framework.slug).join(", ") || "nog niet geselecteerd"}`,
+        ];
+        if (record.export && record.export.google_doc_url) {
+          items.push(`Google Doc: ${record.export.google_doc_url}`);
+        }
+        metaList.innerHTML = items.map((item) => `<li>${item}</li>`).join("");
+      }
+
+      function updateProgress(record) {
+        const items = (record.progress || []).length ? record.progress : ["Nog geen voortgang."];
+        progressList.innerHTML = items.map((item) => `<li>${item}</li>`).join("");
+      }
+
+      function updateRecord(record) {
+        statusTitle.textContent = record.intake.customer_name || "Auditstatus";
+        statusBadge.textContent = record.status;
+        updateMeta(record);
+        updateProgress(record);
+        markdownPreview.textContent = record.markdown_content || record.error || "Nog geen auditoutput.";
+        exportButton.disabled = !(record.status === "completed" && record.markdown_path);
+        if (record.status === "failed" && record.error) {
+          formError.textContent = record.error;
+        }
+      }
+
+      async function fetchRecord(auditId) {
+        const response = await fetch(`/api/audits/${auditId}`);
+        if (!response.ok) {
+          throw new Error("Kon auditstatus niet ophalen.");
+        }
+        return response.json();
+      }
+
+      async function pollAudit(auditId) {
+        try {
+          const record = await fetchRecord(auditId);
+          updateRecord(record);
+          if (record.status === "completed" || record.status === "failed") {
+            clearInterval(pollHandle);
+            pollHandle = null;
+          }
+        } catch (error) {
+          clearInterval(pollHandle);
+          pollHandle = null;
+          formError.textContent = error.message;
+        }
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        formError.textContent = "";
+
+        const payload = {
+          customer_name: document.getElementById("customer_name").value.trim(),
+          website_url: document.getElementById("website_url").value.trim(),
+          audit_date: auditDate.value,
+          main_services: listFromTextarea("main_services"),
+          target_regions: listFromTextarea("target_regions"),
+          competitors: listFromTextarea("competitors"),
+          brand_primary_color: document.getElementById("brand_primary_color").value.trim(),
+          brand_accent_color: document.getElementById("brand_accent_color").value.trim(),
+          search_console_property: document.getElementById("search_console_property").value.trim(),
+          account_manager_notes: document.getElementById("account_manager_notes").value.trim(),
+          publish_to_google_docs: document.getElementById("publish_to_google_docs").checked,
+        };
+
+        try {
+          const response = await fetch("/api/audits", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || "Audit starten mislukt.");
+          }
+          currentAuditId = data.audit_id;
+          statusTitle.textContent = payload.customer_name;
+          statusBadge.textContent = data.status;
+          markdownPreview.textContent = "Audit wordt opgebouwd...";
+          updateMeta({ audit_id: data.audit_id, status: data.status, selected_skills: [], selected_frameworks: [] });
+          updateProgress({ progress: ["Audit aangemaakt.", "Wacht op backend-run."] });
+          if (pollHandle) {
+            clearInterval(pollHandle);
+          }
+          pollHandle = setInterval(() => pollAudit(currentAuditId), 2000);
+          pollAudit(currentAuditId);
+        } catch (error) {
+          formError.textContent = error.message;
+        }
+      });
+
+      exportButton.addEventListener("click", async () => {
+        if (!currentAuditId) {
+          return;
+        }
+        formError.textContent = "";
+        exportButton.disabled = true;
+        try {
+          const response = await fetch(`/api/audits/${currentAuditId}/export`, { method: "POST" });
+          const data = await response.json();
+          if (!response.ok) {
+            throw new Error(data.detail || "Export mislukt.");
+          }
+          updateRecord(data);
+        } catch (error) {
+          formError.textContent = error.message;
+          exportButton.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -83,11 +83,13 @@ def validate_args(args: argparse.Namespace) -> None:
         )
 
 
-def build_credentials(args: argparse.Namespace):
+def build_credentials(args: argparse.Namespace, scopes: list[str] | None = None):
+    effective_scopes = scopes or SCOPES
+
     if args.service_account_file:
         return service_account.Credentials.from_service_account_file(
             args.service_account_file,
-            scopes=SCOPES,
+            scopes=effective_scopes,
         )
 
     token_file = Path(args.token_file)
@@ -95,7 +97,10 @@ def build_credentials(args: argparse.Namespace):
 
     credentials = None
     if token_file.exists():
-        credentials = Credentials.from_authorized_user_file(str(token_file), SCOPES)
+        credentials = Credentials.from_authorized_user_file(str(token_file), effective_scopes)
+
+    if credentials and not credentials.has_scopes(effective_scopes):
+        credentials = None
 
     if credentials and credentials.valid:
         return credentials
@@ -103,7 +108,7 @@ def build_credentials(args: argparse.Namespace):
     if credentials and credentials.expired and credentials.refresh_token:
         credentials.refresh(Request())
     else:
-        flow = InstalledAppFlow.from_client_secrets_file(args.client_secrets_file, SCOPES)
+        flow = InstalledAppFlow.from_client_secrets_file(args.client_secrets_file, effective_scopes)
         if args.oauth_mode == "console" and hasattr(flow, "run_console"):
             credentials = flow.run_console()
         else:

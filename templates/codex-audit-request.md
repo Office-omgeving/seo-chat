@@ -11,13 +11,20 @@ Belangrijk:
 - gebruik Nederlands
 - maak eerst de bronaudit in Markdown in `seo-geo-delivery/`
 - maak realistische inschattingen waar data ontbreekt
-- publiceer de finale klantversie standaard naar de ingestelde Google Docs map
+- publiceer de finale klantanalyse standaard naar de ingestelde Google Docs map
 - geef op het einde ook de Google Doc-link terug
+- neem altijd GEO, Concurrentie en Zoekwoordpotentie en huidige score op
+- gebruik brandkleuren in de klantanalyse wanneer ze ingevuld zijn
+- gebruik als Google Doc-naam standaard `<Klantnaam> SEO & GEO analyse <YYYY-MM-DD>`
+- gebruik gedeelde keywordvolume-data wanneer beschikbaar en live SERP-checks als fallback voor huidige zichtbaarheid
 
 Klantgegevens
 - Klantnaam:
 - Website:
 - Auditdatum:
+- Brandkleur primair (hex, bv. #17162C):
+- Brandkleur accent (hex, bv. #A8844A):
+- Opmerkingen over branding of visuele stijl:
 
 Diensten en regio's
 - Hoofddiensten:
@@ -41,4 +48,6 @@ Optionele extra input
 - Belangrijke diensten met hoogste marge:
 - Pagina's of onderwerpen die zeker aan bod moeten komen:
 - Opmerkingen over Google Business Profile of lokale aanwezigheid:
+- Google Search Console property (optioneel, bv. `sc-domain:example.com` of `https://example.com/`):
+- Heeft de klant toegang tot Search Console: ja/nee
 ```

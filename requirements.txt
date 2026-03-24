@@ -1,8 +1,14 @@
+fastapi
 google-api-python-client
+google-ads
 google-auth
 google-auth-oauthlib
+Jinja2
+openai
 Pillow
 pypdf
 python-docx
 python-dotenv
 reportlab
+supabase
+uvicorn

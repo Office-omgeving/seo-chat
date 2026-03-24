@@ -7,6 +7,7 @@
   - `scripts/` for generation utilities
   - `output/` for generated exports that should stay out of Git
   - `tmp/` for local scratch files and experiments
+  - `skills/` for SEO/GEO skills library (read-only reference, see `CLAUDE.md` for full overview)
 
 ## Repository purpose
 - This repository is the shared source of truth for recurring SEO and GEO customer analyses.
@@ -24,12 +25,14 @@
 - Use `prompts/masterprompt-seo-geo.md` as the default masterprompt for SEO and GEO audits unless the user explicitly asks for a different structure.
 - Use `templates/customer-intake.md` to structure raw customer input when the request is still incomplete or informal.
 - Use `templates/codex-audit-request.md` as the default copy-paste request format for account managers.
-- If the user message is only `SEO` or clearly meant as a shortcut trigger for a new audit, do not start the audit immediately. First ask only for these 5 required fields: customer name, website URL, main services, target regions, and 2 to 3 competitors.
-- After those 5 fields are provided, infer missing context where possible, run the default audit workflow, and publish the final client-facing document to Google Drive unless the user explicitly says not to.
-- Before generating an audit, gather or infer the minimum client context: customer name, website, audit date, main services, target regions, relevant competitors, and account-manager notes.
+- If the user message is only `SEO` or clearly meant as a shortcut trigger for a new audit, do not start the audit immediately. First ask only for these 7 required fields: customer name, website URL, main services, target regions, 2 to 3 competitors, brand primary color, and brand accent color.
+- After those 7 fields are provided, infer missing context where possible, run the default audit workflow, and publish the final client-facing document to Google Drive unless the user explicitly says not to.
+- Before generating an audit, gather or infer the minimum client context: customer name, website, audit date, main services, target regions, relevant competitors, brand primary color, brand accent color, and account-manager notes.
 - If some data is missing, make realistic assumptions and label them clearly in the output.
 - Start from a source audit in Markdown, then derive client-facing versions and exports from that source file.
 - Keep the source analysis substantive enough to support a client-ready document of roughly 30 to 40 pages once exported.
+- For every new audit and every new client-facing analysis, always include explicit sections for GEO, Concurrentie, and Zoekwoordpotentie en huidige score.
+- For keyword sections, default to shared Google Ads Keyword Planner data for monthly volume when available and use live observed SERP checks as the fallback method for current visibility or ranking.
 
 ## Export workflow
 - Prefer a source-of-truth audit in Markdown first, then export to DOCX or PDF.
@@ -39,6 +42,7 @@
 - Load Google publishing defaults from `config/google-docs.env`, then allow `.env` to override locally if needed.
 - When using a service account, make sure the target Drive folder is shared with that service account email before exporting.
 - Default behavior for account-manager audit runs is to publish the final client-facing document to the configured Google Drive folder unless the user explicitly asks not to export yet.
+- Published Google Docs should use the format `<Customer> SEO & GEO analyse <YYYY-MM-DD>` by default.
 - After publishing, always return the Google Doc link in the final response.
 - Exception for the shortcut trigger flow: if the audit was launched through the `SEO` shortcut and the publish succeeded, keep the final user-facing response minimal and answer exactly: `Staat in de drive, succes!`
 - This repo intentionally includes the shared Google Docs publishing configuration for the team. Treat `config/google-service-account.json` as sensitive and rotate it immediately if repo access changes unexpectedly.
@@ -47,11 +51,12 @@
 - Use lowercase, hyphenated filenames.
 - Prefer ISO dates in filenames for point-in-time audits.
 - Keep customer names consistent across related files.
+- Client-facing analysis sources should use `<customer>-seo-geo-analyse-YYYY-MM-DD.md`.
 
 ## Common deliverables
 - Audit: `<customer>-seo-audit-YYYY-MM-DD.md`
 - Plan: `<customer>-seo-geo-plan.md`
-- Client version: `<customer>-seo-geo-klantversie.md`
+- Client-facing analysis: `<customer>-seo-geo-analyse-YYYY-MM-DD.md`
 - Presentation source: `presentation/<customer>-seo-audit-presentatie.js`
 - Masterprompt: `prompts/masterprompt-seo-geo.md`
 
@@ -65,7 +70,24 @@
   - `python3 -m py_compile scripts/*.py`
 - If a script output format changes, mention which export should be regenerated for verification.
 
+## Final response
+- Always end completed work with a super short recap in a fixed 3-line format.
+- Use these exact labels in this order: `Gevraagd:`, `Gedaan:`, `Nog te doen:`.
+- Keep each line very short and scannable. Do not turn the recap into a paragraph.
+
+## Integrated SEO & GEO Skills Library
+- This repo includes 20 SEO/GEO skills (from `seo-geo-claude-skills` v3.0.0) in `skills/`.
+- Skills are organized by fase: `skills/research/`, `skills/build/`, `skills/optimize/`, `skills/monitor/`, `skills/cross-cutting/`.
+- Each skill directory contains a `SKILL.md` and optionally a `references/` subdirectory with templates, rubrics, and checklists.
+- Use skills as reference frameworks during audits for deeper, more accurate analysis. They complement — never replace — the masterprompt and existing scripts.
+- Quality frameworks: `skills/references/core-eeat-benchmark.md` (80-item CORE-EEAT) and `skills/references/cite-domain-rating.md` (40-item CITE).
+- One-shot commands in `skills/commands/` can be invoked with `/seo:<command>` syntax.
+- Tool placeholders (`~~category`) in skills map to our real scripts — see `skills/CONNECTORS.md` and `CLAUDE.md` for mappings.
+- MCP server configs for Ahrefs, SimilarWeb, HubSpot, Amplitude, Notion, and Slack are in `.mcp.json`.
+- When skills and existing AGENTS.md rules conflict: AGENTS.md wins for workflow, naming, exports, and response format. Skills win for content depth and scoring frameworks.
+
 ## Do not
 - Do not commit `tmp/` or `output/`.
 - Do not overwrite one customer's work with another customer's content.
 - Do not assume a file is disposable just because it looks generated; check whether it is a source artifact first.
+- Do not modify skill `SKILL.md` files during normal audit work; they are reference material.

@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Iterable
 
 from docx import Document
-from docx.enum.table import WD_TABLE_ALIGNMENT
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT, WD_ROW_HEIGHT_RULE, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
@@ -16,6 +16,8 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     KeepTogether,
     ListFlowable,
@@ -28,9 +30,26 @@ from reportlab.platypus import (
     TableStyle,
 )
 
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:
+    Image = None
+    ImageDraw = None
+    ImageFont = None
+
 
 TITLE = "FavorCool SEO & GEO Analyse"
-SUBTITLE = "Klantversie"
+SUBTITLE = "2026-03-14"
+BRAND_NAVY = "#17162C"
+BRAND_NAVY_RGB = (0x17, 0x16, 0x2C)
+BRAND_BLUEGREY = "#5C667F"
+BRAND_TEXT = "#242938"
+BRAND_MUTED = "#6B7388"
+BRAND_SURFACE = "#F4F5F9"
+BRAND_LINE = "#D8DCE6"
+BRAND_WHITE = "#FFFFFF"
+FONT_DIR = Path(__file__).resolve().parents[1] / "assets" / "fonts"
+
 META = [
     "Bedrijf: FavorCool",
     "Website: https://www.favor-cool.be/",
@@ -325,29 +344,76 @@ def clean_inline(text: str) -> str:
     )
 
 
+def register_pdf_fonts():
+    font_map = {
+        "regular": ("Poppins-Regular", FONT_DIR / "Poppins-Regular.ttf", "Helvetica"),
+        "bold": ("Poppins-Bold", FONT_DIR / "Poppins-Bold.ttf", "Helvetica-Bold"),
+        "light": ("Poppins-Light", FONT_DIR / "Poppins-Light.ttf", "Helvetica"),
+        "semibold": ("Poppins-SemiBold", FONT_DIR / "Poppins-SemiBold.ttf", "Helvetica-Bold"),
+    }
+    resolved = {}
+    for key, (font_name, font_path, fallback) in font_map.items():
+        if font_path.exists():
+            try:
+                if font_name not in pdfmetrics.getRegisteredFontNames():
+                    pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
+                resolved[key] = font_name
+                continue
+            except Exception:
+                pass
+        resolved[key] = fallback
+    return resolved
+
+
 def build_pdf_styles():
+    fonts = register_pdf_fonts()
     styles = getSampleStyleSheet()
+    styles.add(
+        ParagraphStyle(
+            name="CoverEyebrow",
+            parent=styles["BodyText"],
+            fontName=fonts["light"],
+            fontSize=10.5,
+            leading=14,
+            alignment=TA_CENTER,
+            textColor=colors.HexColor("#D6DAE4"),
+            spaceAfter=10,
+            uppercase=True,
+        )
+    )
+    styles.add(
+        ParagraphStyle(
+            name="CoverBrand",
+            parent=styles["Title"],
+            fontName=fonts["light"],
+            fontSize=28,
+            leading=32,
+            alignment=TA_CENTER,
+            textColor=colors.white,
+            spaceAfter=8,
+        )
+    )
     styles.add(
         ParagraphStyle(
             name="CoverTitle",
             parent=styles["Title"],
-            fontName="Helvetica-Bold",
-            fontSize=23,
-            leading=28,
+            fontName=fonts["semibold"],
+            fontSize=25,
+            leading=30,
             alignment=TA_CENTER,
-            textColor=colors.HexColor("#183153"),
-            spaceAfter=8,
+            textColor=colors.white,
+            spaceAfter=6,
         )
     )
     styles.add(
         ParagraphStyle(
             name="CoverSub",
             parent=styles["BodyText"],
-            fontName="Helvetica",
-            fontSize=11,
+            fontName=fonts["regular"],
+            fontSize=11.5,
             leading=14,
             alignment=TA_CENTER,
-            textColor=colors.HexColor("#4A5568"),
+            textColor=colors.HexColor("#CBD2E2"),
             spaceAfter=4,
         )
     )
@@ -355,11 +421,11 @@ def build_pdf_styles():
         ParagraphStyle(
             name="Section",
             parent=styles["Heading1"],
-            fontName="Helvetica-Bold",
-            fontSize=17,
-            leading=22,
-            textColor=colors.HexColor("#183153"),
-            spaceBefore=12,
+            fontName=fonts["semibold"],
+            fontSize=17.5,
+            leading=23,
+            textColor=colors.HexColor(BRAND_NAVY),
+            spaceBefore=14,
             spaceAfter=8,
         )
     )
@@ -367,10 +433,10 @@ def build_pdf_styles():
         ParagraphStyle(
             name="Body",
             parent=styles["BodyText"],
-            fontName="Helvetica",
+            fontName=fonts["regular"],
             fontSize=11.2,
-            leading=16.5,
-            textColor=colors.HexColor("#1F2937"),
+            leading=17,
+            textColor=colors.HexColor(BRAND_TEXT),
             spaceAfter=8,
         )
     )
@@ -378,10 +444,10 @@ def build_pdf_styles():
         ParagraphStyle(
             name="CalloutTitle",
             parent=styles["BodyText"],
-            fontName="Helvetica-Bold",
-            fontSize=11.8,
+            fontName=fonts["semibold"],
+            fontSize=11.6,
             leading=14.5,
-            textColor=colors.HexColor("#183153"),
+            textColor=colors.HexColor(BRAND_NAVY),
             spaceAfter=4,
         )
     )
@@ -389,37 +455,67 @@ def build_pdf_styles():
         ParagraphStyle(
             name="Small",
             parent=styles["BodyText"],
-            fontName="Helvetica",
-            fontSize=9.4,
-            leading=12.5,
-            textColor=colors.HexColor("#4A5568"),
+            fontName=fonts["regular"],
+            fontSize=9.3,
+            leading=12.8,
+            textColor=colors.HexColor(BRAND_MUTED),
         )
     )
-    return styles
+    styles.add(
+        ParagraphStyle(
+            name="SectionLabel",
+            parent=styles["BodyText"],
+            fontName=fonts["light"],
+            fontSize=9.5,
+            leading=12,
+            textColor=colors.HexColor(BRAND_BLUEGREY),
+            spaceAfter=3,
+            uppercase=True,
+        )
+    )
+    return styles, fonts
 
 
-def add_page_number(canvas, doc):
+def draw_cover_page(canvas, doc):
     canvas.saveState()
+    canvas.setFillColor(colors.HexColor(BRAND_NAVY))
+    canvas.rect(0, 0, doc.pagesize[0], doc.pagesize[1], fill=1, stroke=0)
+    canvas.setFillColor(colors.HexColor("#5E667F"))
+    canvas.setFont("Helvetica", 10)
+    canvas.drawCentredString(doc.pagesize[0] / 2, 71 * mm, "favorcool")
+    canvas.restoreState()
+
+
+def draw_content_page(canvas, doc):
+    canvas.saveState()
+    canvas.setStrokeColor(colors.HexColor(BRAND_LINE))
+    canvas.setLineWidth(0.6)
+    canvas.line(18 * mm, doc.pagesize[1] - 15 * mm, doc.pagesize[0] - 18 * mm, doc.pagesize[1] - 15 * mm)
+    canvas.setFillColor(colors.HexColor(BRAND_MUTED))
+    canvas.setFont("Helvetica", 8.5)
+    canvas.drawString(18 * mm, doc.pagesize[1] - 12 * mm, "FavorCool SEO & GEO Analyse")
+    canvas.drawRightString(doc.pagesize[0] - 18 * mm, doc.pagesize[1] - 12 * mm, "2026-03-14")
+    canvas.setFillColor(colors.HexColor(BRAND_MUTED))
     canvas.setFont("Helvetica", 8)
-    canvas.setFillColor(colors.HexColor("#64748B"))
     canvas.drawRightString(doc.pagesize[0] - 18 * mm, 10 * mm, f"Pagina {doc.page}")
     canvas.restoreState()
 
 
 def build_callout(title: str, body: str, styles):
-    tbl = Table(
-        [[Paragraph(clean_inline(title), styles["CalloutTitle"])], [Paragraph(clean_inline(body), styles["Body"])]],
-        colWidths=[174 * mm],
-    )
+    rows = [[Paragraph(clean_inline(title), styles["CalloutTitle"])]]
+    if body:
+        rows.append([Paragraph(clean_inline(body), styles["Body"])])
+    tbl = Table(rows, colWidths=[174 * mm])
     tbl.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F7FAFC")),
-                ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E0")),
-                ("LEFTPADDING", (0, 0), (-1, -1), 10),
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor(BRAND_SURFACE)),
+                ("LINEBEFORE", (0, 0), (0, -1), 2.4, colors.HexColor(BRAND_NAVY)),
+                ("BOX", (0, 0), (-1, -1), 0.4, colors.HexColor(BRAND_LINE)),
+                ("LEFTPADDING", (0, 0), (-1, -1), 12),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-                ("TOPPADDING", (0, 0), (-1, -1), 8),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
+                ("TOPPADDING", (0, 0), (-1, -1), 9),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 9),
             ]
         )
     )
@@ -446,10 +542,10 @@ def build_three_col_score_table(styles):
     tbl.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#183153")),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(BRAND_NAVY)),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D9E6")),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor(BRAND_LINE)),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor(BRAND_SURFACE)]),
                 ("LEFTPADDING", (0, 0), (-1, -1), 5),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 5),
                 ("TOPPADDING", (0, 0), (-1, -1), 4),
@@ -477,10 +573,10 @@ def build_comp_table(styles):
     tbl.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#183153")),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(BRAND_NAVY)),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D9E6")),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor(BRAND_LINE)),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor(BRAND_SURFACE)]),
                 ("LEFTPADDING", (0, 0), (-1, -1), 5),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 5),
                 ("TOPPADDING", (0, 0), (-1, -1), 4),
@@ -505,10 +601,10 @@ def build_impact_table(styles):
     tbl.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#183153")),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(BRAND_NAVY)),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D9E6")),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor(BRAND_LINE)),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor(BRAND_SURFACE)]),
                 ("LEFTPADDING", (0, 0), (-1, -1), 5),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 5),
                 ("TOPPADDING", (0, 0), (-1, -1), 4),
@@ -528,10 +624,10 @@ def build_four_col_table(styles, headers, rows, widths):
     tbl.setStyle(
         TableStyle(
             [
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#183153")),
+                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(BRAND_NAVY)),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor("#D1D9E6")),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F8FAFC")]),
+                ("GRID", (0, 0), (-1, -1), 0.25, colors.HexColor(BRAND_LINE)),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor(BRAND_SURFACE)]),
                 ("LEFTPADDING", (0, 0), (-1, -1), 5),
                 ("RIGHTPADDING", (0, 0), (-1, -1), 5),
                 ("TOPPADDING", (0, 0), (-1, -1), 4),
@@ -554,7 +650,7 @@ def pdf_bullets(items: Iterable[str], styles):
 
 
 def build_pdf(output_path: Path):
-    styles = build_pdf_styles()
+    styles, _ = build_pdf_styles()
     doc = SimpleDocTemplate(
         str(output_path),
         pagesize=A4,
@@ -567,21 +663,18 @@ def build_pdf(output_path: Path):
     )
 
     story = [
-        Spacer(1, 28),
-        Paragraph(TITLE, styles["CoverTitle"]),
+        Spacer(1, 60 * mm),
+        Paragraph("SEO & GEO analyse 2026-03-14", styles["CoverEyebrow"]),
+        Paragraph("FavorCool", styles["CoverBrand"]),
+        Paragraph("SEO & GEO Analyse", styles["CoverTitle"]),
         Paragraph(SUBTITLE, styles["CoverSub"]),
-        Spacer(1, 6),
+        Spacer(1, 10 * mm),
     ]
     for line in META:
         story.append(Paragraph(clean_inline(line), styles["CoverSub"]))
     story.extend(
         [
-            Spacer(1, 18),
-            build_callout(
-                "Belangrijkste boodschap",
-                "FavorCool heeft al een sterke commerciële basis. De grootste winst zit nu in lokale SEO, contentdifferentiatie, betere mobiele performance en answer-ready GEO-content.",
-                styles,
-            ),
+            Spacer(1, 14 * mm),
             PageBreak(),
         ]
     )
@@ -600,6 +693,7 @@ def build_pdf(output_path: Path):
     }
 
     for idx, section in enumerate(SECTIONS, start=1):
+        story.append(Paragraph(f"hoofdstuk {idx:02d}", styles["SectionLabel"]))
         story.append(Paragraph(f"{idx}. {clean_inline(section.title)}", styles["Section"]))
         for paragraph in section.paragraphs:
             story.append(Paragraph(clean_inline(paragraph), styles["Body"]))
@@ -690,7 +784,7 @@ def build_pdf(output_path: Path):
         if section.title in forced_breaks_after:
             story.append(PageBreak())
 
-    doc.build(story, onFirstPage=add_page_number, onLaterPages=add_page_number)
+    doc.build(story, onFirstPage=draw_cover_page, onLaterPages=draw_content_page)
 
 
 def set_cell_shading(cell, color: str):
@@ -711,11 +805,26 @@ def set_doc_language(document: Document, lang: str = "nl-BE"):
             rpr.append(lang_el)
 
 
+def configure_docx_styles(document: Document):
+    for style_name, font_name, size, color, bold in [
+        ("Normal", "Poppins", Pt(10.8), RGBColor(0x24, 0x29, 0x38), False),
+        ("Title", "Poppins Light", Pt(24), RGBColor(0x17, 0x16, 0x2C), False),
+        ("Subtitle", "Poppins", Pt(12), RGBColor(0x6B, 0x73, 0x88), False),
+        ("Heading 1", "Poppins SemiBold", Pt(18), RGBColor(0x17, 0x16, 0x2C), True),
+        ("Heading 2", "Poppins SemiBold", Pt(14), RGBColor(0x17, 0x16, 0x2C), True),
+    ]:
+        style = document.styles[style_name]
+        style.font.name = font_name
+        style.font.size = size
+        style.font.color.rgb = color
+        style.font.bold = bold
+
+
 def docx_heading(document: Document, text: str, level: int = 1):
     p = document.add_paragraph(style=f"Heading {level}")
     run = p.add_run(text)
-    run.font.name = "Aptos"
-    run.font.color.rgb = RGBColor(0x18, 0x31, 0x53)
+    run.font.name = "Poppins SemiBold"
+    run.font.color.rgb = RGBColor(*BRAND_NAVY_RGB)
     run.bold = True
     return p
 
@@ -724,7 +833,7 @@ def docx_bullets(document: Document, items: Iterable[str]):
     for item in items:
         p = document.add_paragraph(style="List Bullet")
         run = p.add_run(item)
-        run.font.name = "Aptos"
+        run.font.name = "Poppins"
         run.font.size = Pt(10.5)
 
 
@@ -735,13 +844,13 @@ def docx_table(document: Document, headers: list[str], rows: list[tuple[str, ...
     hdr_cells = table.rows[0].cells
     for i, header in enumerate(headers):
         hdr_cells[i].text = header
-        set_cell_shading(hdr_cells[i], "183153")
+        set_cell_shading(hdr_cells[i], "17162C")
         for p in hdr_cells[i].paragraphs:
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             for run in p.runs:
                 run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
                 run.bold = True
-                run.font.name = "Aptos"
+                run.font.name = "Poppins SemiBold"
                 run.font.size = Pt(9.5)
     for row in rows:
         cells = table.add_row().cells
@@ -749,60 +858,183 @@ def docx_table(document: Document, headers: list[str], rows: list[tuple[str, ...
             cells[i].text = value
             for p in cells[i].paragraphs:
                 for run in p.runs:
-                    run.font.name = "Aptos"
+                    run.font.name = "Poppins"
                     run.font.size = Pt(9.5)
     return table
+
+
+def docx_callout(document: Document, title: str, body: str):
+    table = document.add_table(rows=1, cols=1)
+    table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    table.style = "Table Grid"
+    cell = table.cell(0, 0)
+    set_cell_shading(cell, "F4F5F9")
+    p = cell.paragraphs[0]
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    title_run = p.add_run(title)
+    title_run.font.name = "Poppins SemiBold"
+    title_run.font.size = Pt(10.5)
+    title_run.font.color.rgb = RGBColor(*BRAND_NAVY_RGB)
+    if body:
+        p = cell.add_paragraph()
+        run = p.add_run(body)
+        run.font.name = "Poppins"
+        run.font.size = Pt(10.5)
+        run.font.color.rgb = RGBColor(0x24, 0x29, 0x38)
+    return table
+
+
+def build_cover_image(output_path: Path):
+    if Image is None or ImageDraw is None or ImageFont is None:
+        return False
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    image = Image.new("RGB", (1600, 2262), BRAND_NAVY)
+    draw = ImageDraw.Draw(image)
+
+    def load_font(name: str, size: int):
+        font_path = FONT_DIR / name
+        try:
+            return ImageFont.truetype(str(font_path), size)
+        except Exception:
+            return ImageFont.load_default()
+
+    eyebrow_font = load_font("Poppins-Light.ttf", 36)
+    brand_font = load_font("Poppins-Light.ttf", 84)
+    title_font = load_font("Poppins-SemiBold.ttf", 92)
+    body_font = load_font("Poppins-Regular.ttf", 38)
+    mark_font = load_font("Poppins-Light.ttf", 42)
+
+    def centered_text(y: int, text: str, font, fill):
+        bbox = draw.textbbox((0, 0), text, font=font)
+        text_width = bbox[2] - bbox[0]
+        draw.text(((1600 - text_width) / 2, y), text, font=font, fill=fill)
+
+    centered_text(620, "SEO & GEO analyse 2026-03-14", eyebrow_font, "#D6DAE4")
+    centered_text(760, "FavorCool", brand_font, "#FFFFFF")
+    centered_text(890, "SEO & GEO Analyse", title_font, "#FFFFFF")
+    centered_text(1015, "2026-03-14", body_font, "#CBD2E2")
+
+    meta_lines = [
+        "Bedrijf: FavorCool",
+        "Website: https://www.favor-cool.be/",
+        "Auditdatum: 14 maart 2026",
+        "Focusdiensten: airco, warmtepompen, zonnepanelen",
+        "Doelregio's: Antwerpen, Oost-Vlaanderen, West-Vlaanderen",
+    ]
+    for idx, line in enumerate(meta_lines):
+        centered_text(1190 + (idx * 62), line, body_font, "#CBD2E2")
+
+    centered_text(1950, "favorcool", mark_font, BRAND_BLUEGREY)
+    image.save(output_path)
+    return True
+
+
+def set_table_width(table, width):
+    table.autofit = False
+    width_value = int(width)
+    tbl_pr = table._tbl.tblPr
+    tbl_w = tbl_pr.find(qn("w:tblW"))
+    if tbl_w is None:
+        tbl_w = OxmlElement("w:tblW")
+        tbl_pr.append(tbl_w)
+    tbl_w.set(qn("w:type"), "dxa")
+    tbl_w.set(qn("w:w"), str(width_value // 635))
+    for column in table.columns:
+        column.width = width
+    for row in table.rows:
+        for cell in row.cells:
+            cell.width = width
+
+
+def build_docx_cover(document: Document, section):
+    cover_table = document.add_table(rows=1, cols=1)
+    cover_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+    set_table_width(cover_table, section.page_width - section.left_margin - section.right_margin)
+    row = cover_table.rows[0]
+    row.height = Cm(22.7)
+    row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+    cell = row.cells[0]
+    set_cell_shading(cell, "17162C")
+    cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+    first = cell.paragraphs[0]
+    first.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = first.add_run("SEO & GEO ANALYSE 2026-03-14")
+    run.font.name = "Poppins Light"
+    run.font.size = Pt(11)
+    run.font.color.rgb = RGBColor(0xD6, 0xDA, 0xE4)
+    brand = cell.add_paragraph()
+    brand.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = brand.add_run("FavorCool")
+    run.font.name = "Poppins Light"
+    run.font.size = Pt(24)
+    run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+    title = cell.add_paragraph()
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = title.add_run("SEO & GEO Analyse")
+    run.font.name = "Poppins SemiBold"
+    run.font.size = Pt(24)
+    run.font.color.rgb = RGBColor(0xFF, 0xFF, 0xFF)
+    sub = cell.add_paragraph()
+    sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = sub.add_run("2026-03-14")
+    run.font.name = "Poppins"
+    run.font.size = Pt(12)
+    run.font.color.rgb = RGBColor(0xCB, 0xD2, 0xE2)
+    spacer = cell.add_paragraph()
+    spacer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = spacer.add_run("")
+    meta = cell.add_paragraph()
+    meta.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = meta.add_run("Antwerpen | Oost-Vlaanderen | West-Vlaanderen")
+    run.font.name = "Poppins"
+    run.font.size = Pt(10.5)
+    run.font.color.rgb = RGBColor(0xCB, 0xD2, 0xE2)
+    mark = cell.add_paragraph()
+    mark.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = mark.add_run("favorcool")
+    run.font.name = "Poppins Light"
+    run.font.size = Pt(18)
+    run.font.color.rgb = RGBColor(0x5C, 0x66, 0x7F)
 
 
 def build_docx(output_path: Path):
     document = Document()
     set_doc_language(document)
+    configure_docx_styles(document)
     section = document.sections[0]
     section.top_margin = Cm(2.1)
     section.bottom_margin = Cm(1.9)
     section.left_margin = Cm(2.0)
     section.right_margin = Cm(2.0)
 
-    title = document.add_paragraph()
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = title.add_run(TITLE)
-    run.bold = True
-    run.font.size = Pt(26)
-    run.font.name = "Aptos"
-    run.font.color.rgb = RGBColor(0x18, 0x31, 0x53)
-
-    subtitle = document.add_paragraph()
-    subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = subtitle.add_run(SUBTITLE)
-    run.font.size = Pt(13)
-    run.font.name = "Aptos"
-    run.font.color.rgb = RGBColor(0x4A, 0x55, 0x68)
-
-    for line in META:
-        p = document.add_paragraph()
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        run = p.add_run(line)
-        run.font.name = "Aptos"
-        run.font.size = Pt(11)
-        run.font.color.rgb = RGBColor(0x4A, 0x55, 0x68)
-
-    document.add_paragraph()
-    intro = document.add_paragraph()
-    intro.style = "Intense Quote"
-    run = intro.add_run(
-        "Belangrijkste boodschap: FavorCool heeft al een sterke commerciële basis. De grootste winst zit nu in lokale SEO, contentdifferentiatie, betere mobiele performance en answer-ready GEO-content."
-    )
-    run.font.name = "Aptos"
-    run.font.size = Pt(11)
+    cover_image_path = Path("tmp/docs/favorcool-docx-cover.png")
+    if build_cover_image(cover_image_path):
+        document.add_picture(str(cover_image_path), width=section.page_width - section.left_margin - section.right_margin)
+        document.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+    else:
+        build_docx_cover(document, section)
 
     document.add_page_break()
+    docx_callout(
+        document,
+        "Belangrijkste boodschap",
+        "FavorCool heeft al een sterke commerciële basis. De grootste winst zit nu in lokale SEO, contentdifferentiatie, betere mobiele performance en answer-ready GEO-content.",
+    )
+    document.add_paragraph()
 
     for idx, section_data in enumerate(SECTIONS, start=1):
+        label = document.add_paragraph()
+        label.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        run = label.add_run(f"HOOFDSTUK {idx:02d}")
+        run.font.name = "Poppins Light"
+        run.font.size = Pt(9)
+        run.font.color.rgb = RGBColor(0x5C, 0x66, 0x7F)
         docx_heading(document, f"{idx}. {section_data.title}", 1)
         for paragraph in section_data.paragraphs:
             p = document.add_paragraph()
             run = p.add_run(paragraph)
-            run.font.name = "Aptos"
+            run.font.name = "Poppins"
             run.font.size = Pt(11)
         if section_data.bullets:
             docx_bullets(document, section_data.bullets)
@@ -847,7 +1079,7 @@ def build_docx(output_path: Path):
             )
         if section_data.title == "Roadmap en prioriteiten":
             for phase, bullets in ROADMAP.items():
-                docx_heading(document, phase, 2)
+                docx_callout(document, phase, "")
                 docx_bullets(document, bullets)
             docx_heading(document, "Top 5 acties met de grootste impact", 2)
             docx_bullets(document, TOP5)
@@ -866,9 +1098,9 @@ def build_docx(output_path: Path):
     footer = section.footer.paragraphs[0]
     footer.alignment = WD_ALIGN_PARAGRAPH.RIGHT
     run = footer.add_run("FavorCool SEO & GEO Analyse")
-    run.font.name = "Aptos"
+    run.font.name = "Poppins"
     run.font.size = Pt(8)
-    run.font.color.rgb = RGBColor(0x64, 0x74, 0x8B)
+    run.font.color.rgb = RGBColor(0x6B, 0x73, 0x88)
 
     document.save(str(output_path))
 

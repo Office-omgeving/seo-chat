@@ -27,10 +27,30 @@ from export_to_google_docs import (
 )
 
 
-BRAND_NAVY = RGBColor(0x17, 0x16, 0x2C)
-BRAND_SLATE = RGBColor(0x24, 0x29, 0x38)
-BRAND_MUTED = RGBColor(0x6B, 0x73, 0x88)
-BRAND_SOFT = RGBColor(0xF4, 0xF5, 0xF9)
+DEFAULT_BRAND_NAVY = RGBColor(0x17, 0x16, 0x2C)
+DEFAULT_BRAND_SLATE = RGBColor(0x24, 0x29, 0x38)
+DEFAULT_BRAND_MUTED = RGBColor(0x6B, 0x73, 0x88)
+DEFAULT_BRAND_SOFT = RGBColor(0xF4, 0xF5, 0xF9)
+
+BRAND_NAVY = DEFAULT_BRAND_NAVY
+BRAND_SLATE = DEFAULT_BRAND_SLATE
+BRAND_MUTED = DEFAULT_BRAND_MUTED
+BRAND_SOFT = DEFAULT_BRAND_SOFT
+
+DUTCH_MONTHS = {
+    "januari": 1,
+    "februari": 2,
+    "maart": 3,
+    "april": 4,
+    "mei": 5,
+    "juni": 6,
+    "juli": 7,
+    "augustus": 8,
+    "september": 9,
+    "oktober": 10,
+    "november": 11,
+    "december": 12,
+}
 
 CALLOUT_LABELS = {
     "Huidige status vs. doel",
@@ -53,7 +73,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--name",
-        help="Optional Google Doc filename. Defaults to the Markdown filename without extension.",
+        help="Optional Google Doc filename. Defaults to '<company> SEO & GEO analyse <YYYY-MM-DD>' when possible.",
     )
     parser.add_argument(
         "--folder-id",
@@ -87,6 +107,49 @@ def build_output_docx_path(input_markdown: Path, output_docx: Path | None) -> Pa
     default_path = Path("output/docx") / f"{input_markdown.stem}.docx"
     default_path.parent.mkdir(parents=True, exist_ok=True)
     return default_path
+
+
+def rgb_to_hex(color: RGBColor) -> str:
+    return "".join(f"{channel:02X}" for channel in color)
+
+
+def parse_hex_color(value: str) -> RGBColor | None:
+    cleaned = value.strip().lstrip("#")
+    if not re.fullmatch(r"[0-9A-Fa-f]{6}", cleaned):
+        return None
+    return RGBColor(int(cleaned[0:2], 16), int(cleaned[2:4], 16), int(cleaned[4:6], 16))
+
+
+def resolve_brand_value(metadata: dict[str, str], *keys: str) -> str:
+    for key in keys:
+        value = metadata.get(key, "").strip()
+        if value:
+            return value
+    return ""
+
+
+def apply_brand_palette(metadata: dict[str, str]) -> None:
+    global BRAND_NAVY, BRAND_SLATE, BRAND_MUTED, BRAND_SOFT
+
+    brand_primary = resolve_brand_value(
+        metadata,
+        "brand_primary",
+        "brandkleur primair",
+        "brand primair",
+        "primaire brandkleur",
+    )
+    brand_accent = resolve_brand_value(
+        metadata,
+        "brand_accent",
+        "brandkleur accent",
+        "brand accent",
+        "accentkleur",
+    )
+
+    BRAND_NAVY = parse_hex_color(brand_primary) or DEFAULT_BRAND_NAVY
+    BRAND_MUTED = parse_hex_color(brand_accent) or DEFAULT_BRAND_MUTED
+    BRAND_SLATE = DEFAULT_BRAND_SLATE
+    BRAND_SOFT = DEFAULT_BRAND_SOFT
 
 
 def set_cell_shading(cell, fill: str) -> None:
@@ -216,18 +279,56 @@ def prettify_company_name(name: str) -> str:
     return name
 
 
-def read_related_audit_metadata(input_markdown: Path) -> dict[str, str]:
-    match = re.match(r"^(?P<prefix>.+)-seo-geo-klantversie$", input_markdown.stem)
+def extract_customer_prefix(stem: str) -> str:
+    patterns = [
+        r"^(?P<prefix>.+)-seo-geo-klantversie$",
+        r"^(?P<prefix>.+)-seo-geo-analyse-\d{4}-\d{2}-\d{2}$",
+        r"^(?P<prefix>.+)-seo-audit-\d{4}-\d{2}-\d{2}$",
+    ]
+    for pattern in patterns:
+        match = re.match(pattern, stem)
+        if match:
+            return match.group("prefix")
+    return ""
+
+
+def extract_iso_date_from_stem(stem: str) -> str:
+    match = re.search(r"(?P<date>\d{4}-\d{2}-\d{2})$", stem)
     if not match:
+        return ""
+    return match.group("date")
+
+
+def normalize_iso_date(value: str) -> str:
+    cleaned = value.strip()
+    if not cleaned:
+        return ""
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", cleaned):
+        return cleaned
+
+    match = re.fullmatch(r"(?P<day>\d{1,2})\s+(?P<month>[A-Za-z]+)\s+(?P<year>\d{4})", cleaned.lower())
+    if not match:
+        return ""
+
+    month = DUTCH_MONTHS.get(match.group("month"))
+    if not month:
+        return ""
+    return f"{int(match.group('year')):04d}-{month:02d}-{int(match.group('day')):02d}"
+
+
+def read_related_audit_metadata(input_markdown: Path) -> dict[str, str]:
+    prefix = extract_customer_prefix(input_markdown.stem)
+    if not prefix:
         return {}
 
-    prefix = match.group("prefix")
     candidates = sorted(input_markdown.parent.glob(f"{prefix}-seo-audit-*.md"))
     if not candidates:
         return {}
 
     metadata: dict[str, str] = {}
-    for line in candidates[-1].read_text(encoding="utf-8").splitlines():
+    latest_audit = candidates[-1]
+    metadata["source_audit_date_iso"] = extract_iso_date_from_stem(latest_audit.stem)
+    for line in latest_audit.read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
         match = re.match(r"^\*\*(.+?):\*\*\s*(.+)$", stripped)
         if not match:
@@ -242,7 +343,10 @@ def extract_cover_metadata(lines: list[str], input_markdown: Path) -> dict[str, 
     company = ""
     website = ""
     audit_date = ""
+    audit_date_iso = extract_iso_date_from_stem(input_markdown.stem)
     regions = ""
+    brand_primary = ""
+    brand_accent = ""
 
     for line in lines:
         stripped = line.strip()
@@ -267,12 +371,36 @@ def extract_cover_metadata(lines: list[str], input_markdown: Path) -> dict[str, 
             audit_date = value
         elif key == "doelregio's":
             regions = value
+        elif key in {"brandkleur primair", "brand primair", "primaire brandkleur"}:
+            brand_primary = value
+        elif key in {"brandkleur accent", "brand accent", "accentkleur"}:
+            brand_accent = value
 
     related_audit_metadata = read_related_audit_metadata(input_markdown)
     company = company or related_audit_metadata.get("bedrijf", "")
     website = website or related_audit_metadata.get("website", "")
     audit_date = audit_date or related_audit_metadata.get("auditdatum", "")
+    audit_date_iso = (
+        audit_date_iso
+        or normalize_iso_date(audit_date)
+        or related_audit_metadata.get("source_audit_date_iso", "")
+        or normalize_iso_date(related_audit_metadata.get("auditdatum", ""))
+    )
     regions = regions or related_audit_metadata.get("doelregio's", "")
+    brand_primary = brand_primary or resolve_brand_value(
+        related_audit_metadata,
+        "brand_primary",
+        "brandkleur primair",
+        "brand primair",
+        "primaire brandkleur",
+    )
+    brand_accent = brand_accent or resolve_brand_value(
+        related_audit_metadata,
+        "brand_accent",
+        "brandkleur accent",
+        "brand accent",
+        "accentkleur",
+    )
 
     if not title:
         title = fallback_name.replace("-", " ").title()
@@ -285,8 +413,22 @@ def extract_cover_metadata(lines: list[str], input_markdown: Path) -> dict[str, 
         "company": company,
         "website": website,
         "audit_date": audit_date,
+        "audit_date_iso": audit_date_iso,
         "regions": regions,
+        "brand_primary": brand_primary,
+        "brand_accent": brand_accent,
     }
+
+
+def build_default_google_doc_name(input_markdown: Path) -> str:
+    metadata = extract_cover_metadata(input_markdown.read_text(encoding="utf-8").splitlines(), input_markdown)
+    company = prettify_company_name(metadata["company"]).strip()
+    audit_date = metadata["audit_date_iso"] or normalize_iso_date(metadata["audit_date"])
+    if company and audit_date:
+        return f"{company} SEO & GEO analyse {audit_date}"
+    if company:
+        return f"{company} SEO & GEO analyse"
+    return input_markdown.stem
 
 
 def build_cover(document: Document, metadata: dict[str, str]) -> None:
@@ -300,14 +442,15 @@ def build_cover(document: Document, metadata: dict[str, str]) -> None:
     row.height = Cm(22.7)
     cell = row.cells[0]
     cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
-    set_cell_shading(cell, "17162C")
+    set_cell_shading(cell, rgb_to_hex(BRAND_NAVY))
 
     first = cell.paragraphs[0]
     first.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = first.add_run("SEO & GEO KLANTVERSIE 2026")
+    eyebrow = f"SEO & GEO analyse {metadata['audit_date_iso'] or metadata['audit_date']}".strip()
+    run = first.add_run(eyebrow)
     run.font.name = "Poppins Light"
     run.font.size = Pt(11)
-    run.font.color.rgb = RGBColor(0xD6, 0xDA, 0xE4)
+    run.font.color.rgb = BRAND_MUTED
 
     brand = cell.add_paragraph()
     brand.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -325,10 +468,10 @@ def build_cover(document: Document, metadata: dict[str, str]) -> None:
 
     subtitle = cell.add_paragraph()
     subtitle.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = subtitle.add_run("Klantversie")
+    run = subtitle.add_run(metadata["audit_date_iso"] or metadata["audit_date"] or "SEO & GEO analyse")
     run.font.name = "Poppins"
     run.font.size = Pt(12)
-    run.font.color.rgb = RGBColor(0xCB, 0xD2, 0xE2)
+    run.font.color.rgb = BRAND_MUTED
 
     details = [value for value in [metadata["website"], metadata["audit_date"], metadata["regions"]] if value]
     for value in details:
@@ -337,27 +480,27 @@ def build_cover(document: Document, metadata: dict[str, str]) -> None:
         run = detail.add_run(value)
         run.font.name = "Poppins"
         run.font.size = Pt(10.5)
-        run.font.color.rgb = RGBColor(0xCB, 0xD2, 0xE2)
+        run.font.color.rgb = BRAND_MUTED
 
 
 def build_summary_callout(document: Document, metadata: dict[str, str]) -> None:
     title = metadata["title"]
     company = metadata["company"]
-    message = f"{company} krijgt hier een klantversie van de SEO & GEO analyse met focus op prioriteiten, groeikansen en concrete vervolgstappen."
+    message = f"{company} krijgt hier een SEO & GEO analyse met focus op prioriteiten, groeikansen en concrete vervolgstappen."
     if "SEO & GEO" not in title.upper():
-        message = f"{company} krijgt hier een klantversie van {title.lower()} met focus op prioriteiten, groeikansen en concrete vervolgstappen."
+        message = f"{company} krijgt hier een analyse van {title.lower()} met focus op prioriteiten, groeikansen en concrete vervolgstappen."
 
     table = document.add_table(rows=1, cols=1)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     cell = table.cell(0, 0)
-    set_cell_shading(cell, "F4F5F9")
+    set_cell_shading(cell, rgb_to_hex(BRAND_SOFT))
 
     heading = cell.paragraphs[0]
     heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
     run = heading.add_run("Belangrijkste boodschap")
     run.font.name = "Poppins SemiBold"
     run.font.size = Pt(10.5)
-    run.font.color.rgb = BRAND_NAVY
+    run.font.color.rgb = BRAND_MUTED
 
     body = cell.add_paragraph()
     body.paragraph_format.space_before = Pt(3)
@@ -441,6 +584,7 @@ def build_status_callout(document: Document, items: list[str]) -> None:
 def markdown_to_docx(input_markdown: Path, output_docx: Path) -> None:
     lines = input_markdown.read_text(encoding="utf-8").splitlines()
     metadata = extract_cover_metadata(lines, input_markdown)
+    apply_brand_palette(metadata)
 
     document = Document()
     configure_styles(document)
@@ -600,7 +744,7 @@ def main() -> None:
 
     export_args = merge_export_args(args)
     markdown_to_docx(args.input_markdown, export_args.input_file)
-    export_args.name = export_args.name or args.input_markdown.stem
+    export_args.name = export_args.name or build_default_google_doc_name(args.input_markdown)
     validate_export_args(export_args)
     credentials = build_credentials(export_args)
     created_file = upload_google_doc(export_args, credentials)
